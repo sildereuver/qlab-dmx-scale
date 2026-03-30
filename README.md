@@ -21,8 +21,8 @@ QLab → Art-Net (broadcast) → OLA (universe 0)
 
 - macOS 11 Big Sur or higher (Intel or Apple Silicon)
 - Python 3.8 or higher (included with macOS via Command Line Tools)
-- OLA installed via Homebrew: `brew install ola`  
-  If Homebrew is not installed yet, install it first:
+- OLA installed via Homebrew in Terminal: `brew install ola`  
+  If Homebrew is not installed yet, install it first via Terminal:
   ```
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
