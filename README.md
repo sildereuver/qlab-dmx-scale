@@ -1,5 +1,7 @@
 # QLab DMX Scale
 
+![QLab DMX Scale](Screenshot.png)
+
 Per-channel DMX scale tool between QLab and your Enttec USB DMX interface, via OLA.
 
 QLab sends a value of 100% to channel 1 → you set scale 0.8 → Enttec receives 80%.  
