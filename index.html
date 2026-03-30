@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QLab DMX Scale</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:       #0e0e0f;
+    --surface:  #161618;
+    --surface2: #1e1e21;
+    --border:   #2a2a2e;
+    --accent:   #e8ff00;
+    --accent2:  #00d4ff;
+    --text:     #e8e8e8;
+    --muted:    #666;
+    --danger:   #ff4444;
+    --ok:       #44dd88;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+
+  .meta-fields {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .meta-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .meta-field label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .meta-field input,
+  .meta-field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 5px 8px;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  .meta-field input:focus,
+  .meta-field textarea:focus { border-color: var(--accent); }
+
+  .meta-field textarea {
+    resize: none;
+    height: 32px;
+    line-height: 1.3;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn.primary:hover { background: var(--accent); color: #000; }
+  .btn.danger { border-color: transparent; color: var(--muted); }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  .toolbar-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .toolbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-pill {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.06em;
+  }
+
+  .status-pill.ok   { background: rgba(68,221,136,0.15); color: var(--ok);    border: 1px solid rgba(68,221,136,0.3); }
+  .status-pill.err  { background: rgba(255,68,68,0.15);  color: var(--danger); border: 1px solid rgba(255,68,68,0.3); }
+  .status-pill.idle { background: rgba(102,102,102,0.15); color: var(--muted); border: 1px solid rgba(102,102,102,0.3); }
+
+  .current-file {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
+  }
+
+  /* ── Main layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    height: calc(100vh - 116px);
+    overflow: hidden;
+  }
+
+  /* ── Channel pane ── */
+  .channel-pane {
+    overflow-y: auto;
+    padding: 16px 24px;
+  }
+
+  .channel-pane::-webkit-scrollbar { width: 4px; }
+  .channel-pane::-webkit-scrollbar-track { background: transparent; }
+  .channel-pane::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+
+  .add-row input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    border-radius: 2px;
+    width: 80px;
+    transition: border-color 0.15s;
+  }
+
+  .add-row input:focus { border-color: var(--accent); }
+
+  .channel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── Channel card ── */
+  .channel-card {
+    display: grid;
+    grid-template-columns: 40px 1fr 96px 200px 32px;
+    grid-template-rows: auto auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    transition: border-color 0.15s;
+  }
+
+  .channel-card:hover { border-color: #3a3a40; }
+  .channel-card.active { border-color: rgba(232,255,0,0.2); }
+
+  .ch-number {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+    .ch-number-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--accent2);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: right;
+    width: 100%;
+    outline: none;
+    padding: 2px 0;
+    transition: border-color 0.15s;
+  }
+
+  .ch-number-input:focus {
+    border-bottom-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .ch-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 2px 0;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .ch-name-input:focus { border-bottom-color: var(--accent); }
+  .ch-name-input::placeholder { color: var(--muted); font-style: italic; }
+
+  /* Hide number input spinners */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  .ch-scale-cell {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+  }
+
+  .ch-scale-cell .effective-scale {
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .ch-scale-cell .ch-value-input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .ch-pct-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .ch-value-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 8px;
+    outline: none;
+    border-radius: 2px;
+    text-align: right;
+    transition: border-color 0.15s;
+  }
+
+  .ch-value-input:focus { border-color: var(--accent); }
+
+  .slider-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ch-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .ch-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  .ch-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+  .ch-dmx-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .ch-dmx-labels .dmx-in  { color: var(--accent2); opacity: 0.8; }
+  .ch-dmx-labels .dmx-out { color: var(--ok); opacity: 0.8; }
+
+  .dmx-val { display: inline-block; width: 2.2em; text-align: right; }
+  .dmx-pct { opacity: 0.6; margin-left: 2px; }
+
+  .ch-note-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10px;
+    padding: 0;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+    grid-column: 2 / 5;
+  }
+
+  .ch-note-input:focus {
+    border-bottom-color: var(--border);
+    color: var(--text);
+  }
+
+  .ch-note-input::placeholder { color: var(--muted); opacity: 0.5; font-style: italic; }
+
+  .ch-delete {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 2px;
+    transition: color 0.15s;
+    font-family: var(--mono);
+  }
+
+  .ch-delete:hover { color: var(--danger); }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+
+  .sidebar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .preset-item {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.15s;
+  }
+
+  .preset-item:hover { border-color: var(--accent2); color: var(--accent2); }
+  .preset-item.active { border-color: var(--accent); color: var(--accent); }
+
+  .ola-universe {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .ola-universe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .ola-uid   { color: var(--accent); font-weight: 600; }
+  .ola-name  { color: var(--muted); font-size: 10px; margin-left: 6px; }
+  .ola-port  { font-size: 10px; color: var(--muted); padding: 1px 0; }
+  .port-in   { color: var(--accent2); }
+  .port-out  { color: var(--ok); }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .modal h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .modal input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    border-radius: 2px;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+
+  .modal input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── Notification ── */
+  .notif {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    z-index: 200;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.25s;
+  }
+
+  .notif.show { transform: translateY(0); opacity: 1; }
+  .notif.ok   { border-color: var(--ok);    color: var(--ok); }
+  .notif.err  { border-color: var(--danger); color: var(--danger); }
+
+  .master-mode-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .master-mode-toggle button {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    pointer-events: all;
+  }
+
+  .master-mode-toggle button:hover { color: var(--text); }
+
+  .master-mode-toggle button.active {
+    background: var(--surface2);
+    color: var(--accent);
+  }
+
+  .channel-card.absolute-mode .ch-value-input {
+    opacity: 0.4;
+    pointer-events: none;
+    color: var(--muted);
+  }
+
+  .channel-card.absolute-mode .ch-slider {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .effective-scale {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent2);
+    opacity: 0.7;
+    flex-shrink: 0;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 40px 0;
+    line-height: 2;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">QLab<br>DMX<br>Scale</div>
+  <div class="meta-fields">
+    <div class="meta-field">
+      <label>Project</label>
+      <input type="text" id="f-project" placeholder="Project name">
+    </div>
+    <div class="meta-field">
+      <label>Venue</label>
+      <input type="text" id="f-venue" placeholder="Venue">
+    </div>
+    <div class="meta-field" style="flex:2">
+      <label>Notes</label>
+      <textarea id="f-comments" placeholder="Additional notes for these settings"></textarea>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn primary" onclick="openSaveAs()">Save as</button>
+  <button class="btn" onclick="saveCurrentFile()">Save</button>
+  <button class="btn" onclick="openPreset()">Open…</button>
+  <label class="btn" for="settings-file-input" title="Import fixture names and DMX addresses from a QLab .qlabsettings export" style="cursor:pointer">Import QLab patch…</label>
+  <input type="file" id="settings-file-input" style="display:none" onclick="this.value = null" onchange="handleSettingsFile(this)">
+  <div class="toolbar-sep"></div>
+  <span id="qlab-status" class="status-pill idle">QLab —</span>
+  <div class="toolbar-right">
+    <span class="current-file" id="current-file"></span>
+    <button class="btn danger" onclick="shutdown()">Quit</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="channel-pane">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-bottom:12px">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0">Master</span>
+      <span style="flex:1"></span>
+      <div class="master-mode-toggle">
+        <button id="mode-relative" class="active" onclick="setMasterMode('relative')">Relative</button>
+        <button id="mode-absolute" onclick="setMasterMode('absolute')">Absolute</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <input type="number" class="ch-value-input" id="master-value"
+               value="100" min="0" max="200" step="1"
+               style="width:64px"
+               onchange="const v = parseInt(this.value); if (!isNaN(v)) setMaster(v / 100); else this.value = Math.round(state.master * 100);">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">%</span>
+      </div>
+      <input type="range" class="ch-slider" id="master-slider" min="0" max="200" step="1"
+             value="100" style="width:200px;flex-shrink:0" oninput="syncMaster(this)">
+    </div>
+
+    <div class="add-row">
+      <input type="number" id="new-ch" placeholder="ch #" min="1" max="512">
+      <button class="btn" onclick="addChannel()">+ Add channel</button>
+      <button class="btn danger" onclick="resetAll()" style="margin-left:auto">Reset all to 100%</button>
+    </div>
+    <div class="channel-list" id="channel-list">
+      <div class="empty-state">No channels configured.<br>Add a channel or fetch fixtures from QLab.</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">
+        <span>OLA Universes</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn" style="padding:2px 8px;font-size:10px" onclick="refreshOLA()">↺</button>
+          <button class="btn" style="padding:2px 8px;font-size:10px" onclick="openOLA()">Open OLA</button>
+        </div>
+      </div>
+      <div id="ola-universes">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Loading...</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Recent Presets</div>
+      <div id="preset-list">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No presets</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Open modal -->
+<div class="modal-overlay" id="modal-open">
+  <div class="modal">
+    <h3>Open preset</h3>
+    <div id="open-preset-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <label class="btn" for="browse-preset-input" style="cursor:pointer">Browse…</label>
+      <input type="file" id="browse-preset-input" accept=".json" style="display:none" onchange="handleBrowsePreset(this)">
+      <button class="btn" onclick="closeModal('modal-open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save As modal -->
+<div class="modal-overlay" id="modal-saveas">
+  <div class="modal">
+    <h3>Save as</h3>
+    <input type="text" id="saveas-name" placeholder="projectname_venue">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-saveas')">Cancel</button>
+      <button class="btn" onclick="doDownload()">Download</button>
+      <button class="btn primary" onclick="doSaveAs()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let state = {
+  scales: {}, channel_names: {}, project: "", venue: "",
+  comments: "", current_file: null, qlab_connected: false,
+  fixture_ids: {}, last_settings_file: null, has_fixture_ids: false, notes: {}, master: 1.0, master_mode: "relative", presets: [], dmx_in: new Array(512).fill(0),
+};
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  await loadState();
+  renderChannels();
+  renderPresets();
+  refreshOLA();
+  setInterval(pollDMX, 100);
+  setInterval(refreshOLA, 5000);
+}
+
+async function loadState() {
+  try {
+    const r = await fetch("/api/state");
+    const data = await r.json();
+    state = { ...state, ...data };
+    if (!state.fixture_ids) state.fixture_ids = {};
+    if (state.master !== undefined) {
+      const slider = document.getElementById('master-slider');
+      if (slider) slider.value = Math.round(state.master * 100);
+      const mv = document.getElementById('master-value');
+      if (mv) mv.value = Math.round(state.master * 100);
+    }
+    if (state.master_mode) setMasterMode(state.master_mode);
+    document.getElementById("f-project").value  = state.project  || "";
+    document.getElementById("f-venue").value    = state.venue    || "";
+    document.getElementById("f-comments").value = state.comments || "";
+    updateQLAbStatus();
+    updateCurrentFile();
+    } catch(e) { notify("Server unreachable", "err"); }
+}
+
+// ── DMX poll ───────────────────────────────────────────────────────────────
+async function pollDMX() {
+  try {
+    const r = await fetch("/api/state");
+    const data = await r.json();
+    state.dmx_in = data.dmx_in;
+    if (data.qlab_connected !== state.qlab_connected) {
+      state.qlab_connected = data.qlab_connected;
+      updateQLAbStatus();
+    }
+    updateDMXBars();
+  } catch(e) {}
+}
+
+function updateDMXBars() {
+  document.querySelectorAll(".channel-card").forEach(card => {
+    const ch    = parseInt(card.dataset.ch);
+    const val   = state.dmx_in[ch - 1] || 0;
+    const scale = state.scales[String(ch)] ?? 1.0;
+    const out   = Math.min(255, Math.round(val * scale));
+
+    const labelIn  = card.querySelector(".dmx-in");
+    const labelOut = card.querySelector(".dmx-out");
+    const inPct  = Math.round(val / 255 * 100);
+    const outPct = Math.round(out / 255 * 100);
+    if (labelIn)  labelIn.innerHTML  = `in <span class="dmx-val">${inPct}%</span><span class="dmx-pct">(${val})</span>`;
+    if (labelOut) labelOut.innerHTML = `out <span class="dmx-val">${outPct}%</span><span class="dmx-pct">(${out})</span>`;
+
+    // Update effective scale label
+    const effLabel = card.querySelector(".effective-scale");
+    if (effLabel) {
+      const chScale = state.scales[String(ch)] ?? 1.0;
+      const isAbsolute = state.master_mode === "absolute";
+      effLabel.textContent = (!isAbsolute && Math.abs(state.master - 1.0) > 0.001)
+        ? Math.round(chScale * state.master * 100) + "%"
+        : "";
+    }
+
+    card.classList.toggle("active", val > 0);
+  });
+}
+
+// ── Render channels ────────────────────────────────────────────────────────
+function renderChannels() {
+  const list = document.getElementById("channel-list");
+  const channels = Object.keys(state.scales).map(Number).sort((a, b) => a - b);
+
+  if (channels.length === 0) {
+    list.innerHTML = `<div class="empty-state">No channels configured.<br>Add a channel or fetch fixtures from QLab.</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  channels.forEach(ch => {
+    const isAbsolute = state.master_mode === "absolute";
+    const ch_scale = state.scales[String(ch)] ?? 1.0;
+    const scale = isAbsolute ? state.master : ch_scale;
+    const displayScale = scale;
+    const name   = state.channel_names[String(ch)] || "";
+    const dmxPct = ((state.dmx_in[ch - 1] || 0) / 255 * 100).toFixed(0);
+
+    const card = document.createElement("div");
+    card.className = "channel-card";
+    card.dataset.ch = ch;
+    if (state.master_mode === 'absolute') card.classList.add('absolute-mode');
+    card.innerHTML = `
+      <input class="ch-number-input" type="number" value="${ch}" min="1" max="512" title="Channel number" onchange="changeChannel(${ch}, parseInt(this.value))">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <input class="ch-name-input" type="text"
+               value="${esc(name)}" placeholder="label…"
+               onchange="setName(${ch}, this.value)" style="flex:1;min-width:0">
+      </div>
+      <div class="ch-scale-cell">
+        <span class="effective-scale">${!isAbsolute && Math.abs(state.master - 1.0) > 0.001 ? Math.round(ch_scale * state.master * 100) + "%" : ""}</span>
+        <input class="ch-value-input" type="number"
+               value="${Math.round(scale * 100)}" min="0" max="200" step="1"
+               onchange="setScale(${ch}, parseInt(this.value) / 100)">
+        <span class="ch-pct-label">%</span>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" class="ch-slider" min="0" max="200" step="1"
+               value="${Math.round(scale * 100)}" oninput="syncSlider(${ch}, this)">
+        <div class="ch-dmx-labels">
+          <span class="dmx-in">in <span class="dmx-val">${Math.round((state.dmx_in[ch-1]||0)/2.55)}%</span><span class="dmx-pct">(${state.dmx_in[ch-1]||0})</span></span>
+          <span class="dmx-out">out <span class="dmx-val">${Math.round(Math.min(255,Math.round((state.dmx_in[ch-1]||0)*scale))/2.55)}%</span><span class="dmx-pct">(${Math.min(255,Math.round((state.dmx_in[ch-1]||0)*scale))})</span></span>
+        </div>
+      </div>
+      <button class="ch-delete" onclick="removeChannel(${ch})">×</button>
+      <input class="ch-note-input" type="text"
+             value="${esc((state.notes || {})[String(ch)] || '')}"
+             placeholder="note…"
+             onchange="setNote(${ch}, this.value)">
+    `;
+    list.appendChild(card);
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function syncSlider(ch, slider) {
+  const pct = parseInt(slider.value);
+  const inputs = slider.closest(".channel-card").querySelectorAll(".ch-value-input");
+  inputs.forEach(i => { if (i !== slider) i.value = pct; });
+  setScale(ch, pct / 100, false);
+}
+
+function setScale(ch, val, rerender = true) {
+  val = Math.max(0, Math.min(2, isNaN(val) ? 1 : val));
+  state.scales[String(ch)] = val;
+  if (rerender) renderChannels();
+  pushUpdate();
+}
+
+function setNote(ch, note) {
+  if (!state.notes) state.notes = {};
+  state.notes[String(ch)] = note;
+  pushUpdate();
+}
+
+function setName(ch, name) {
+  state.channel_names[String(ch)] = name;
+  pushUpdate();
+}
+
+function addChannel() {
+  const input = document.getElementById("new-ch");
+  const ch = parseInt(input.value);
+  if (!ch || ch < 1 || ch > 512) { notify("Channel must be between 1 and 512", "err"); return; }
+  if (state.scales[String(ch)] !== undefined) { notify(`Channel ${ch} already exists`, "err"); return; }
+  state.scales[String(ch)] = 1.0;
+  input.value = "";
+  renderChannels();
+  pushUpdate();
+}
+
+function removeChannel(ch) {
+  delete state.scales[String(ch)];
+  renderChannels();
+  pushUpdate();
+}
+
+function changeChannel(oldCh, newCh) {
+  if (!newCh || newCh < 1 || newCh > 512) {
+    notify("Channel must be between 1 and 512", "err");
+    renderChannels();
+    return;
+  }
+  if (newCh !== oldCh && state.scales[String(newCh)] !== undefined) {
+    notify(`Channel ${newCh} already exists`, "err");
+    renderChannels();
+    return;
+  }
+  if (newCh === oldCh) return;
+
+  // Verplaats scale en naam naar nieuw kanaal
+  state.scales[String(newCh)]        = state.scales[String(oldCh)];
+  state.channel_names[String(newCh)] = state.channel_names[String(oldCh)] || "";
+  delete state.scales[String(oldCh)];
+  delete state.channel_names[String(oldCh)];
+
+  renderChannels();
+  pushUpdate();
+  notify(`Channel ${oldCh} → ${newCh}`, "ok");
+}
+
+// ── Master ────────────────────────────────────────────────────────────────
+function syncMaster(slider) {
+  const pct = parseInt(slider.value);
+  document.getElementById("master-value").value = pct;
+  setMaster(pct / 100, false);
+}
+
+
+function setMaster(val, updateSlider = true) {
+  val = Math.max(0, Math.min(2, isNaN(val) ? 1.0 : val));
+  state.master = val;
+  if (updateSlider) {
+    const slider = document.getElementById("master-slider");
+    if (slider) slider.value = Math.round(val * 100);
+    document.getElementById("master-value").value = Math.round(val * 100);
+  }
+  renderChannels();
+  pushUpdate();
+}
+
+function setMasterMode(mode) {
+  state.master_mode = mode;
+  document.getElementById("mode-relative").classList.toggle("active", mode === "relative");
+  document.getElementById("mode-absolute").classList.toggle("active", mode === "absolute");
+  renderChannels();
+  pushUpdate();
+}
+
+function resetAll() {
+  if (!confirm("Reset all scale values to 100%?")) return;
+  Object.keys(state.scales).forEach(k => state.scales[k] = 1.0);
+  renderChannels();
+  pushUpdate();
+}
+
+// ── Server sync ────────────────────────────────────────────────────────────
+let pushTimer = null;
+function pushUpdate() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    await fetch("/api/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project:       document.getElementById("f-project").value,
+        venue:         document.getElementById("f-venue").value,
+        comments:      document.getElementById("f-comments").value,
+        scales:        state.scales,
+        channel_names: state.channel_names,
+        notes:         state.notes || {},
+        master:        state.master,
+        master_mode:   state.master_mode,
+      })
+    });
+  }, 150);
+}
+
+["f-project", "f-venue", "f-comments"].forEach(id => {
+  document.getElementById(id).addEventListener("input", pushUpdate);
+});
+
+// ── QLab ───────────────────────────────────────────────────────────────────
+function updateQLAbStatus() {
+  const el = document.getElementById("qlab-status");
+  if (state.qlab_connected) {
+    el.className = "status-pill ok";
+    el.textContent = "QLab ●";
+  } else {
+    el.className = "status-pill idle";
+    el.textContent = "QLab —";
+  }
+}
+
+function updateCurrentFile() {
+  const el = document.getElementById("current-file");
+  el.textContent = state.current_file
+    ? "● " + state.current_file.split("/").pop()
+    : "";
+}
+
+// ── Presets ────────────────────────────────────────────────────────────────
+function renderPresets() {
+  const list = document.getElementById("preset-list");
+  const presets = state.presets || [];
+  if (presets.length === 0) {
+    list.innerHTML = `<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No presets</span>`;
+    return;
+  }
+  list.innerHTML = "";
+  presets.forEach(p => {
+    const name = p.name || p;
+    const item = document.createElement("div");
+    item.className = "preset-item" + (state.current_file && state.current_file.endsWith(name) ? " active" : "");
+    item.textContent = name.replace(".json", "");
+    item.onclick = () => loadPreset(name);
+    list.appendChild(item);
+  });
+}
+
+async function loadPreset(fname) {
+  const r = await fetch(`/api/load?file=${encodeURIComponent(fname)}`);
+  const data = await r.json();
+  if (data.ok) {
+    await loadState();
+    renderChannels();
+    renderPresets();
+    notify(`Loaded: ${fname}`, "ok");
+  } else {
+    notify("Failed to load preset", "err");
+  }
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────
+async function openPreset() {
+  const list = document.getElementById("open-preset-list");
+  list.innerHTML = '<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Loading…</span>';
+  document.getElementById("modal-open").classList.add("open");
+  try {
+    const r = await fetch("/api/all_presets");
+    const data = await r.json();
+    const presets = data.presets || [];
+    list.innerHTML = "";
+    if (presets.length === 0) {
+      list.innerHTML = '<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No presets found</span>';
+    } else {
+      presets.forEach(p => {
+        const name = p.name || p;
+        const item = document.createElement("div");
+        item.className = "preset-item" + (state.current_file && state.current_file.endsWith(name) ? " active" : "");
+        item.textContent = name.replace(".json", "");
+        item.onclick = () => { loadPreset(name); closeModal("modal-open"); };
+        list.appendChild(item);
+      });
+    }
+  } catch(e) {
+    list.innerHTML = '<span style="font-size:11px;color:var(--danger);font-family:var(--mono)">Error loading presets</span>';
+  }
+}
+
+async function handleBrowsePreset(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = "";
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Sla op in presets map en laad
+      const fname = file.name.endsWith(".json") ? file.name : file.name + ".json";
+      await fetch("/api/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: fname.replace(".json",""), _data: data })
+      });
+      // Direct laden
+      const r = await fetch("/api/import_json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await r.json();
+      if (result.ok) {
+        await loadState();
+        renderChannels();
+        renderPresets();
+        closeModal("modal-open");
+        notify(`Loaded: ${fname}`, "ok");
+      }
+    } catch(e) {
+      notify("Error loading file", "err");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function openSaveAs() {
+  const project = document.getElementById("f-project").value.trim();
+  const venue   = document.getElementById("f-venue").value.trim();
+  const suggested = project && venue ? project + "_" + venue : project || venue || "preset";
+  document.getElementById("saveas-name").value = suggested;
+  document.getElementById("saveas-name").placeholder = "projectname_venue";
+  document.getElementById("modal-saveas").classList.add("open");
+  setTimeout(() => document.getElementById("saveas-name").focus(), 100);
+}
+
+async function doDownload() {
+  const name = document.getElementById("saveas-name").value.trim() || "preset";
+  // Eerst opslaan, dan downloaden
+  await fetch("/api/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project: document.getElementById("f-project").value,
+      venue: document.getElementById("f-venue").value,
+      comments: document.getElementById("f-comments").value,
+      scales: state.scales,
+      channel_names: state.channel_names,
+      notes: state.notes || {},
+      master: state.master,
+      master_mode: state.master_mode,
+    })
+  });
+  const saveR = await fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: name })
+  });
+  const saveData = await saveR.json();
+  if (saveData.ok) {
+    // Download via anchor
+    const a = document.createElement("a");
+    a.href = `/api/download_preset?file=${encodeURIComponent(saveData.file)}`;
+    a.download = saveData.file;
+    a.click();
+    closeModal("modal-saveas");
+    notify(`Downloaded: ${saveData.file}`, "ok");
+  }
+}
+
+async function doSaveAs() {
+  const name = document.getElementById("saveas-name").value.trim();
+  if (!name) return;
+  closeModal("modal-saveas");
+  await doSave(name);
+}
+
+async function saveCurrentFile() {
+  if (!state.current_file) { openSaveAs(); return; }
+  await doSave(state.current_file.split("/").pop().replace(".json", ""));
+}
+
+async function doSave(filename) {
+  await fetch("/api/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project:       document.getElementById("f-project").value,
+      venue:         document.getElementById("f-venue").value,
+      comments:      document.getElementById("f-comments").value,
+      scales:        state.scales,
+      channel_names: state.channel_names,
+    })
+  });
+  const r = await fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename })
+  });
+  const data = await r.json();
+  if (data.ok) {
+    state.current_file = data.file;
+    updateCurrentFile();
+    const sr = await (await fetch("/api/state")).json();
+    state.presets = sr.presets;
+    renderPresets();
+    notify(`Saved: ${data.file}`, "ok");
+  }
+}
+
+// ── OLA ────────────────────────────────────────────────────────────────────
+function openOLA() { window.open("http://localhost:9090", "_blank"); }
+
+async function refreshOLA() {
+  const container = document.getElementById("ola-universes");
+  try {
+    const r = await fetch("/api/ola/universes");
+    const data = await r.json();
+    if (!data.ok || data.universes.length === 0) {
+      container.innerHTML = `<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">No universes found</span>`;
+      return;
+    }
+    container.innerHTML = "";
+    data.universes.forEach(u => {
+      const inPorts  = (u.input_ports  || []).map(p => p.description || p.device || "in").join(", ")  || "—";
+      const outPorts = (u.output_ports || []).map(p => p.description || p.device || "out").join(", ") || "—";
+      const div = document.createElement("div");
+      div.className = "ola-universe";
+      div.innerHTML = `
+        <div class="ola-universe-header">
+          <span><span class="ola-uid">U${u.id}</span><span class="ola-name">${esc(u.name)}</span></span>
+        </div>
+        <div class="ola-port">↓ <span class="port-in">${esc(inPorts)}</span></div>
+        <div class="ola-port">↑ <span class="port-out">${esc(outPorts)}</span></div>
+      `;
+      container.appendChild(div);
+    });
+  } catch(e) {
+    container.innerHTML = `<span style="font-size:11px;color:var(--danger);font-family:var(--mono)">OLA unreachable</span>`;
+  }
+}
+
+// ── Import QLab patch ─────────────────────────────────────────────────────
+let _pickerAttempt = false;
+
+function prepareFilePicker() {
+  _pickerAttempt = true;
+  // After window regains focus (picker closed), check if file was selected
+  window.addEventListener('focus', function onFocus() {
+    window.removeEventListener('focus', onFocus);
+    setTimeout(() => {
+      const input = document.getElementById('settings-file-input');
+      if (_pickerAttempt && (!input.files || input.files.length === 0)) {
+        // No file selected (cancel or grey) - reopen picker
+        _pickerAttempt = false;
+        setTimeout(() => input.click(), 100);
+      }
+      _pickerAttempt = false;
+    }, 300);
+  });
+}
+async function handleSettingsFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(",")[1];
+    try {
+      const r = await fetch("/api/import_settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: base64, filename: file.name, mode: "import" })
+      });
+      const data = await r.json();
+      if (data.ok) {
+        await loadState();
+        renderChannels();
+        renderPresets();
+        notify(`Imported ${data.imported} channel(s) from QLab patch`, "ok");
+      } else {
+        notify(`Import failed: ${data.error}`, "err");
+      }
+    } catch(e) {
+      notify("Import error", "err");
+    }
+  };
+  reader.onloadend = () => { input.value = ''; };
+  reader.readAsDataURL(file);
+}
+
+// ── Quit ───────────────────────────────────────────────────────────────────
+async function shutdown() {
+  if (!confirm("Quit QLab DMX Scale?\n\nThis will stop OLA and DMX output.")) return;
+  try {
+    await fetch("/api/shutdown", { method: "POST", headers: {"Content-Type":"application/json"}, body: "{}" });
+  } catch(e) {}
+  document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:var(--mono);color:var(--muted);font-size:13px;">Server stopped. You can close this window.</div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+document.querySelectorAll(".modal-overlay").forEach(el => {
+  el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); });
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
+  if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); saveCurrentFile(); }
+});
+
+// ── Notifications ──────────────────────────────────────────────────────────
+let notifTimer = null;
+function notify(msg, type = "ok") {
+  const el = document.getElementById("notif");
+  el.textContent = msg;
+  el.className = `notif ${type} show`;
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove("show"), 2500);
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
